@@ -1,0 +1,12 @@
+{
+  "name": "shared-todo",
+  "version": "1.0.0",
+  "description": "共享待办列表 — 多人同时使用的在线 Todo 应用",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(curl -s http://localhost:3000/api/todos)",
+      "Bash(node -e \"process.exit\\(\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(cmd //c \"for /f \\\\\"tokens=5\\\\\" %a in \\('netstat -ano ^| findstr :3000 ^| findstr LISTENING'\\) do taskkill /F /PID %a\")",
+      "Bash(rm -f data.json)",
+      "Bash(node server.js)",
+      "Bash(curl -s -X POST http://localhost:3000/api/todos -H 'Content-Type: application/json' -d '{\"text\":\"买菜\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/todos -H 'Content-Type: application/json' -d '{\"text\":\"写代码\"}')",
+      "Bash(cmd *)",
+      "Bash(git --version)",
+      "Bash(gh --version)",
+      "Bash(git config *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}

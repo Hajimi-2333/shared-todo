@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>共享待办 — 多人协作 Todo</title>
+    <style>
+        :root {
+            --bg-start: #e8eaf6;
+            --bg-end: #f3e5f5;
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --text-primary: #2c3e50;
+            --text-secondary: #7f8c8d;
+            --text-done: #bdc3c7;
+            --accent: #6c5ce7;
+            --accent-hover: #5a4bd1;
+            --danger: #e17055;
+            --danger-hover: #d35400;
+            --border: rgba(0, 0, 0, 0.08);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            --radius: 16px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--bg-start), var(--bg-end), #fce4ec);
+            background-size: 400% 400%;
+            animation: bgShift 20s ease infinite;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            padding: 20px;
+        }
+
+        @keyframes bgShift {
+            0%, 100% { background-position: 0% 50%; }
+            25% { background-position: 100% 0%; }
+            50% { background-position: 100% 100%; }
+            75% { background-position: 0% 100%; }
+        }
+
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.3;
+            z-index: 0;
+        }
+        body::before {
+            width: 320px; height: 320px;
+            background: #a29bfe;
+            top: -80px; right: -80px;
+        }
+        body::after {
+            width: 280px; height: 280px;
+            background: #fab1a0;
+            bottom: -60px; left: -60px;
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 500px;
+            background: var(--card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 32px 28px;
+        }
+
+        /* Status bar */
+        .online-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+        .online-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #00b894;
+            animation: pulse 2s ease infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .app-header {
+            margin-bottom: 28px;
+        }
+        .app-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+        .app-header .date {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+        .input-group input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 15px;
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.6);
+            outline: none;
+            transition: var(--transition);
+        }
+        .input-group input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.12);
+            background: #fff;
+        }
+        .input-group input::placeholder {
+            color: #b2bec3;
+        }
+        .btn-add {
+            width: 48px; height: 48px;
+            border: none;
+            border-radius: 12px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 22px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .btn-add:hover {
+            background: var(--accent-hover);
+            transform: scale(1.05);
+            box-shadow: 0 4px 16px rgba(108, 92, 231, 0.3);
+        }
+        .btn-add:active {
+            transform: scale(0.95);
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.04);
+            border-radius: 10px;
+            padding: 4px;
+        }
+        .filter-tab {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .filter-tab.active {
+            background: #fff;
+            color: var(--accent);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        .filter-tab:hover:not(.active) {
+            color: var(--text-primary);
+        }
+
+        .todo-list {
+            list-style: none;
+            min-height: 60px;
+        }
+        .todo-list:empty::after {
+            content: '暂无任务，添加一条吧 ✨';
+            display: block;
+            text-align: center;
+            color: #b2bec3;
+            font-size: 14px;
+            padding: 32px 0;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 12px;
+            border-radius: 12px;
+            transition: var(--transition);
+            animation: slideIn 0.3s ease;
+        }
+        .todo-item:hover {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(40px); }
+        }
+        .todo-item.removing {
+            animation: slideOut 0.3s ease forwards;
+        }
+
+        .todo-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 22px; height: 22px;
+            border: 2px solid #d1d8e0;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: var(--transition);
+            flex-shrink: 0;
+            position: relative;
+        }
+        .todo-checkbox:checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .todo-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .todo-checkbox:hover {
+            border-color: var(--accent);
+        }
+
+        .todo-text {
+            flex: 1;
+            font-size: 15px;
+            color: var(--text-primary);
+            word-break: break-word;
+            transition: var(--transition);
+        }
+        .todo-item.completed .todo-text {
+            color: var(--text-done);
+            text-decoration: line-through;
+            text-decoration-color: #d1d8e0;
+        }
+
+        .todo-edit-input {
+            flex: 1;
+            font-size: 15px;
+            padding: 6px 10px;
+            border: 2px solid var(--accent);
+            border-radius: 8px;
+            outline: none;
+            background: #fff;
+            color: var(--text-primary);
+        }
+
+        .btn-edit,
+        .btn-delete {
+            width: 32px; height: 32px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: var(--transition);
+            background: transparent;
+            color: var(--text-secondary);
+        }
+        .btn-edit:hover {
+            background: rgba(108, 92, 231, 0.1);
+            color: var(--accent);
+        }
+        .btn-delete:hover {
+            background: rgba(225, 112, 85, 0.1);
+            color: var(--danger);
+        }
+
+        .app-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .remaining-count {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .remaining-count strong {
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .btn-clear {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .btn-clear:hover {
+            background: rgba(225, 112, 85, 0.1);
+            color: var(--danger);
+        }
+        .btn-clear:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 540px) {
+            .app-container {
+                padding: 24px 16px;
+                border-radius: 12px;
+            }
+            .app-header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="online-status">
+            <span class="online-dot"></span>
+            <span id="syncStatus">在线 · 多人共享</span>
+        </div>
+
+        <header class="app-header">
+            <h1>📋 共享待办</h1>
+            <p class="date" id="currentDate"></p>
+        </header>
+
+        <div class="input-group">
+            <input
+                type="text"
+                id="todoInput"
+                placeholder="添加一个新的任务..."
+                maxlength="200"
+                autocomplete="off"
+            />
+            <button class="btn-add" id="btnAdd" title="添加任务">+</button>
+        </div>
+
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="all">全部</button>
+            <button class="filter-tab" data-filter="active">进行中</button>
+            <button class="filter-tab" data-filter="completed">已完成</button>
+        </div>
+
+        <ul class="todo-list" id="todoList"></ul>
+
+        <footer class="app-footer">
+            <span class="remaining-count">
+                剩余 <strong id="remainingCount">0</strong> 项
+            </span>
+            <button class="btn-clear" id="btnClear" disabled>清空已完成</button>
+        </footer>
+    </div>
+
+    <script>
+        (function () {
+            // ── DOM refs ──────────────────────────────
+            const $input = document.getElementById('todoInput');
+            const $btnAdd = document.getElementById('btnAdd');
+            const $list = document.getElementById('todoList');
+            const $remaining = document.getElementById('remainingCount');
+            const $btnClear = document.getElementById('btnClear');
+            const $filterTabs = document.querySelectorAll('.filter-tab');
+            const $date = document.getElementById('currentDate');
+            const $syncStatus = document.getElementById('syncStatus');
+
+            // ── State ────────────────────────────────
+            let todos = [];
+            let currentFilter = 'all';
+            let editingId = null;
+
+            // ── API helpers ───────────────────────────
+            const API = '/api/todos';
+
+            async function apiFetch(url, options = {}) {
+                const res = await fetch(url, {
+                    headers: { 'Content-Type': 'application/json' },
+                    ...options,
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || '请求失败');
+                }
+                return res.json();
+            }
+
+            async function fetchTodos() {
+                try {
+                    todos = await apiFetch(API);
+                    render();
+                    $syncStatus.textContent = '在线 · 多人共享';
+                } catch (err) {
+                    console.error('获取待办失败:', err);
+                    $syncStatus.textContent = '⚠ 连接失败，请刷新页面';
+                }
+            }
+
+            async function addTodoAPI(text) {
+                return apiFetch(API, {
+                    method: 'POST',
+                    body: JSON.stringify({ text }),
+                });
+            }
+
+            async function updateTodoAPI(id, data) {
+                return apiFetch(`${API}/${id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(data),
+                });
+            }
+
+            async function deleteTodoAPI(id) {
+                return apiFetch(`${API}/${id}`, {
+                    method: 'DELETE',
+                });
+            }
+
+            async function clearCompletedAPI() {
+                return apiFetch(`${API}/completed`, {
+                    method: 'DELETE',
+                });
+            }
+
+            // ── Helpers ──────────────────────────────
+            function getFiltered() {
+                if (currentFilter === 'active') return todos.filter(t => !t.completed);
+                if (currentFilter === 'completed') return todos.filter(t => t.completed);
+                return todos;
+            }
+
+            function countActive() {
+                return todos.filter(t => !t.completed).length;
+            }
+
+            // ── Render ───────────────────────────────
+            function render() {
+                const filtered = getFiltered();
+
+                if (filtered.length === 0) {
+                    $list.innerHTML = '';
+                } else {
+                    $list.innerHTML = filtered.map(t => {
+                        const isEditing = t.id === editingId;
+                        const completedClass = t.completed ? 'completed' : '';
+                        const encodedText = escapeHTML(t.text);
+
+                        if (isEditing) {
+                            return `
+                                <li class="todo-item ${completedClass}" data-id="${t.id}">
+                                    <input type="text" class="todo-edit-input" value="${encodedText}" autofocus />
+                                    <button class="btn-edit" data-action="save" title="保存">💾</button>
+                                    <button class="btn-edit" data-action="cancel" title="取消">✕</button>
+                                </li>`;
+                        }
+
+                        return `
+                            <li class="todo-item ${completedClass}" data-id="${t.id}">
+                                <input type="checkbox" class="todo-checkbox" ${t.completed ? 'checked' : ''} />
+                                <span class="todo-text">${encodedText}</span>
+                                <button class="btn-edit" data-action="edit" title="编辑">✎</button>
+                                <button class="btn-delete" data-action="delete" title="删除">🗑</button>
+                            </li>`;
+                    }).join('');
+                }
+
+                const activeCount = countActive();
+                $remaining.textContent = activeCount;
+                $btnClear.disabled = countActive() === todos.length;
+            }
+
+            function escapeHTML(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            function updateDate() {
+                const now = new Date();
+                const days = ['日', '一', '二', '三', '四', '五', '六'];
+                const y = now.getFullYear();
+                const m = now.getMonth() + 1;
+                const d = now.getDate();
+                const w = days[now.getDay()];
+                $date.textContent = `${y}年${m}月${d}日 · 星期${w}`;
+            }
+
+            // ── Actions ───────────────────────────────
+            async function addTodo() {
+                const text = $input.value.trim();
+                if (!text) return;
+                $input.value = '';
+                try {
+                    await addTodoAPI(text);
+                    await fetchTodos();
+                } catch (err) {
+                    alert('添加失败: ' + err.message);
+                }
+                $input.focus();
+            }
+
+            async function toggleTodo(id) {
+                const todo = todos.find(t => t.id === id);
+                if (!todo) return;
+                try {
+                    await updateTodoAPI(id, { completed: !todo.completed });
+                    await fetchTodos();
+                } catch (err) {
+                    alert('操作失败: ' + err.message);
+                }
+            }
+
+            async function deleteTodo(id) {
+                const li = $list.querySelector(`[data-id="${id}"]`);
+                if (li) {
+                    li.classList.add('removing');
+                    li.addEventListener('animationend', async () => {
+                        try {
+                            await deleteTodoAPI(id);
+                            await fetchTodos();
+                        } catch (err) {
+                            alert('删除失败: ' + err.message);
+                        }
+                    }, { once: true });
+                } else {
+                    try {
+                        await deleteTodoAPI(id);
+                        await fetchTodos();
+                    } catch (err) {
+                        alert('删除失败: ' + err.message);
+                    }
+                }
+            }
+
+            function startEdit(id) {
+                editingId = id;
+                render();
+                requestAnimationFrame(() => {
+                    const input = $list.querySelector('.todo-edit-input');
+                    if (input) {
+                        input.focus();
+                        input.select();
+                    }
+                });
+            }
+
+            async function saveEdit(id, newText) {
+                const trimmed = newText.trim();
+                editingId = null;
+                if (trimmed) {
+                    try {
+                        await updateTodoAPI(id, { text: trimmed });
+                        await fetchTodos();
+                    } catch (err) {
+                        alert('保存失败: ' + err.message);
+                    }
+                } else {
+                    render();
+                }
+            }
+
+            function cancelEdit() {
+                editingId = null;
+                render();
+            }
+
+            async function clearCompleted() {
+                try {
+                    await clearCompletedAPI();
+                    await fetchTodos();
+                } catch (err) {
+                    alert('清空失败: ' + err.message);
+                }
+            }
+
+            function setFilter(filter) {
+                currentFilter = filter;
+                $filterTabs.forEach(tab => {
+                    tab.classList.toggle('active', tab.dataset.filter === filter);
+                });
+                render();
+            }
+
+            // ── Auto-refresh: 窗口获得焦点时刷新 ──────
+            window.addEventListener('focus', () => {
+                fetchTodos();
+            });
+
+            // ── Event delegation ──────────────────────
+            $btnAdd.addEventListener('click', addTodo);
+            $input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') addTodo();
+                if (e.key === 'Escape') {
+                    $input.value = '';
+                    $input.blur();
+                }
+            });
+
+            $list.addEventListener('click', e => {
+                const li = e.target.closest('.todo-item');
+                if (!li) return;
+                const id = li.dataset.id;
+
+                if (e.target.classList.contains('todo-checkbox')) {
+                    toggleTodo(id);
+                    return;
+                }
+
+                const action = e.target.dataset.action;
+                if (action === 'edit') {
+                    startEdit(id);
+                } else if (action === 'delete') {
+                    deleteTodo(id);
+                } else if (action === 'save') {
+                    const input = li.querySelector('.todo-edit-input');
+                    if (input) saveEdit(id, input.value);
+                } else if (action === 'cancel') {
+                    cancelEdit();
+                }
+            });
+
+            $list.addEventListener('keydown', e => {
+                if (editingId) {
+                    const li = e.target.closest('.todo-item');
+                    if (!li) return;
+                    const id = li.dataset.id;
+                    if (e.key === 'Enter') {
+                        saveEdit(id, e.target.value);
+                    } else if (e.key === 'Escape') {
+                        cancelEdit();
+                    }
+                }
+            });
+
+            $list.addEventListener('dblclick', e => {
+                const textSpan = e.target.closest('.todo-text');
+                if (textSpan) {
+                    const li = textSpan.closest('.todo-item');
+                    if (li) startEdit(li.dataset.id);
+                }
+            });
+
+            $filterTabs.forEach(tab => {
+                tab.addEventListener('click', () => setFilter(tab.dataset.filter));
+            });
+
+            $btnClear.addEventListener('click', clearCompleted);
+
+            // ── Init ────────────────────────────────
+            function init() {
+                updateDate();
+                fetchTodos();
+                $input.focus();
+            }
+            init();
+        })();
+    </script>
+</body>
+</html>
