@@ -97,6 +97,6 @@ app.get('*', (_req, res) => {
 });
 
 // ── Start ────────────────────────────────────────
-app.listen(PORT, () => {
-    console.log(`✅ 共享待办服务已启动: http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ 共享待办服务已启动，端口: ${PORT}`);
 });

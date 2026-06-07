@@ -1,11 +1,7 @@
 {
-  "build": {
-    "builder": "nixpacks",
-    "buildCommand": "npm install"
-  },
+  "$schema": "https://railway.app/railway.schema.json",
   "deploy": {
     "startCommand": "node server.js",
-    "healthcheckPath": "/api/todos",
-    "restartPolicyType": "ON_FAILURE"
+    "healthcheckPath": "/api/todos"
   }
 }
